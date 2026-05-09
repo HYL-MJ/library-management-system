@@ -29,6 +29,15 @@ async function getBookDetail(req, res, next) {
   }
 }
 
+async function getBookByBarcode(req, res, next) {
+  try {
+    const data = await bookService.getBookByBarcode(req.params.barcode);
+    sendSuccess(res, data);
+  } catch (error) {
+    next(error);
+  }
+}
+
 // Get book list with filtering, sorting, and pagination.
 async function getBooksWithFilters(req, res, next) {
   try {
@@ -65,6 +74,7 @@ module.exports = {
   listBooks,
   searchBooks,
   getBookDetail,
+  getBookByBarcode,
   getBooksWithFilters,  
   getNewBooks,          
   getRanking            

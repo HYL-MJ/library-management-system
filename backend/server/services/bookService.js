@@ -48,6 +48,16 @@ function toBookSummary(book, ratingMap) {
   };
 }
 
+function toBookCopySummary(copy) {
+  return {
+    id: copy.id,
+    barcode: copy.barcode,
+    shelfLocation: copy.shelfLocation,
+    available: copy.available,
+    createdAt: formatDateTime(copy.createdAt),
+  };
+}
+
 async function listBooks(query) {
   const { page, size } = parsePagination(query || {});
 
@@ -116,6 +126,11 @@ async function searchBooks(query) {
 async function getBookDetail(bookId) {
   const book = await prisma.book.findUnique({
     where: { id: bookId },
+    include: {
+      copies: {
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
 
   if (!book) {
@@ -141,8 +156,54 @@ async function getBookDetail(bookId) {
     shelfLocation: book.shelfLocation,
     available: book.available,
     availableCopies: book.availableCopies,
+    copies: book.copies.map(toBookCopySummary),
     createdAt: formatDateTime(book.createdAt),
     averageRating: average._avg.stars === null ? null : Number(average._avg.stars.toFixed(1)),
+  };
+}
+
+async function getBookByBarcode(barcode) {
+  if (!barcode || typeof barcode !== "string" || !barcode.trim()) {
+    throw new AppError(400, "Missing barcode or invalid parameters");
+  }
+
+  const normalizedBarcode = barcode.trim();
+  const copy = await prisma.bookCopy.findUnique({
+    where: { barcode: normalizedBarcode },
+    include: {
+      book: true,
+    },
+  });
+
+  if (!copy) {
+    throw new AppError(404, "Book copy not found");
+  }
+
+  const average = await prisma.rating.aggregate({
+    where: { bookId: copy.bookId },
+    _avg: {
+      stars: true,
+    },
+  });
+
+  return {
+    barcode: copy.barcode,
+    copy: toBookCopySummary(copy),
+    book: {
+      id: copy.book.id,
+      title: copy.book.title,
+      author: copy.book.author,
+      isbn: copy.book.isbn,
+      genre: copy.book.genre,
+      cover: copy.book.cover,
+      description: copy.book.description,
+      language: copy.book.language,
+      shelfLocation: copy.book.shelfLocation,
+      available: copy.book.available,
+      availableCopies: copy.book.availableCopies,
+      createdAt: formatDateTime(copy.book.createdAt),
+      averageRating: average._avg.stars === null ? null : Number(average._avg.stars.toFixed(1)),
+    },
   };
 }
 
@@ -312,6 +373,7 @@ module.exports = {
   listBooks,
   searchBooks,
   getBookDetail,
+  getBookByBarcode,
   getBooksWithFilters,  
   getNewBooks,          
 };

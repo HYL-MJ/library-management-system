@@ -6,6 +6,15 @@ const { formatDateTime } = require("../utils/date");
 const VALID_GENRES = ["Technology", "Fiction", "Science", "History", "Management"];
 const VALID_LANGUAGES = ["Chinese", "English", "Others"];
 
+function buildBookCopyCreateManyData(book, copyCount) {
+  return Array.from({ length: copyCount }, (_, index) => ({
+    bookId: book.id,
+    barcode: `${book.isbn}-${String(index + 1).padStart(3, "0")}`,
+    shelfLocation: book.shelfLocation || null,
+    available: true,
+  }));
+}
+
 /**
  * Add a new book (L1.1)
  */
@@ -50,6 +59,13 @@ async function addBook(payload, userId) {
       available: availableCopies === undefined || Number(availableCopies) > 0,
     },
   });
+
+  const copyCount = availableCopies !== undefined ? Number(availableCopies) : 1;
+  if (copyCount > 0) {
+    await prisma.bookCopy.createMany({
+      data: buildBookCopyCreateManyData(book, copyCount),
+    });
+  }
 
   // Log the action
   await prisma.auditLog.create({
@@ -119,6 +135,24 @@ async function editBook(bookId, payload, userId) {
     where: { id: bookId },
     data: updateData,
   });
+
+  if (availableCopies !== undefined) {
+    const desiredCopies = Number(availableCopies);
+    const existingCopies = await prisma.bookCopy.count({
+      where: { bookId },
+    });
+
+    if (desiredCopies > existingCopies) {
+      await prisma.bookCopy.createMany({
+        data: Array.from({ length: desiredCopies - existingCopies }, (_, index) => ({
+          bookId,
+          barcode: `${updatedBook.isbn}-${String(existingCopies + index + 1).padStart(3, "0")}`,
+          shelfLocation: updatedBook.shelfLocation || null,
+          available: true,
+        })),
+      });
+    }
+  }
 
   // Log the action
   await prisma.auditLog.create({

@@ -343,6 +343,33 @@ async function main() {
 
   console.log(`Seeded books: ${books.count}`);
 
+  const createdBooks = await prisma.book.findMany({
+    select: {
+      id: true,
+      isbn: true,
+      shelfLocation: true,
+      availableCopies: true,
+    },
+  });
+
+  const bookCopiesData = createdBooks.flatMap((book) =>
+    Array.from({ length: book.availableCopies }, (_, index) => ({
+      bookId: book.id,
+      barcode: `${book.isbn}-${String(index + 1).padStart(3, "0")}`,
+      shelfLocation: book.shelfLocation,
+      available: true,
+    })),
+  );
+
+  if (bookCopiesData.length > 0) {
+    const copies = await prisma.bookCopy.createMany({
+      data: bookCopiesData,
+      skipDuplicates: true,
+    });
+
+    console.log(`Seeded book copies: ${copies.count}`);
+  }
+
   const config = await prisma.config.upsert({
     where: { key: "FINE_RATE_PER_DAY" },
     update: {

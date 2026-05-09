@@ -86,12 +86,28 @@ model Book {
   createdAt       DateTime     @default(now())
 
   loans     Loan[]
+  copies    BookCopy[]
   ratings   Rating[]
   holds     Hold[]
   wishlists Wishlist[]
 
   @@index([title])
   @@index([author])
+  @@index([available])
+}
+
+model BookCopy {
+  id            String   @id @default(cuid())
+  bookId         String
+  barcode        String   @unique
+  shelfLocation  String?
+  available      Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@index([barcode])
   @@index([available])
 }
 
