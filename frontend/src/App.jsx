@@ -138,6 +138,18 @@ function App() {
               <span className="icon">📋</span>
               <span>My Loans</span>
             </div>
+            <div className={`menu-item ${currentPage === 'holds' ? 'active' : ''}`} onClick={() => setCurrentPage('holds')}>
+              <span className="icon">⏳</span>
+              <span>My Holds</span>
+            </div>
+            <div className={`menu-item ${currentPage === 'wishlist' ? 'active' : ''}`} onClick={() => setCurrentPage('wishlist')}>
+              <span className="icon">❤️</span>
+              <span>Wishlist</span>
+            </div>
+            <div className={`menu-item ${currentPage === 'fines' ? 'active' : ''}`} onClick={() => setCurrentPage('fines')}>
+              <span className="icon">💰</span>
+              <span>Pay Fines</span>
+            </div>
             <div className={`menu-item ${currentPage === 'profile' ? 'active' : ''}`} onClick={() => setCurrentPage('profile')}>
               <span className="icon">👤</span>
               <span>My Profile</span>
@@ -156,7 +168,15 @@ function App() {
         {/* Main Content */}
         <main className="main-content">
           <header className="top-nav">
-            <span className="breadcrumb">Home / {getPageName(currentPage)}</span>
+            <span className="breadcrumb">
+              <span 
+                onClick={() => setCurrentPage('dashboard')} 
+                style={{ cursor: 'pointer', color: '#007bff' }}
+              >
+                {getPageName('dashboard')}
+              </span> 
+              / {getPageName(currentPage)}
+            </span>
             <div className="top-user">
               <span className="top-user-name">{user.name}</span>
               <span className="role-badge">{getRoleName(user.role)}</span>
@@ -204,6 +224,10 @@ function App() {
               <span className="icon">🗂️</span>
               <span>Hold Management</span>
             </div>
+            <div className={`menu-item ${currentPage === 'scanner' ? 'active' : ''}`} onClick={() => setCurrentPage('scanner')}>
+              <span className="icon">📷</span>
+              <span>Book Scanner</span>
+            </div>
           </nav>
           <div className="user-info">
             <div className="user-avatar">{user.name[0].toUpperCase()}</div>
@@ -218,7 +242,15 @@ function App() {
         {/* Main Content */}
         <main className="main-content">
           <header className="top-nav">
-            <span className="breadcrumb">Home / {getPageName(currentPage)}</span>
+            <span className="breadcrumb">
+              <span 
+                onClick={() => setCurrentPage('dashboard')} 
+                style={{ cursor: 'pointer', color: '#007bff' }}
+              >
+                {getPageName('dashboard')}
+              </span> 
+              / {getPageName(currentPage)}
+            </span>
             <div className="top-user">
               <span className="top-user-name">{user.name}</span>
               <span className="role-badge">{getRoleName(user.role)}</span>
@@ -265,10 +297,14 @@ function getPageName(page) {
     'dashboard': 'Dashboard',
     'books': 'Books',
     'loans': 'My Loans',
+    'holds': 'My Holds',
+    'wishlist': 'Wishlist',
+    'fines': 'Pay Fines',
     'profile': 'My Profile',
     'manage': 'Manage Books',
     'loans-manage': 'Loan Management',
-    'holds-manage': 'Hold Management'
+    'holds-manage': 'Hold Management',
+    'scanner': 'Book Scanner'
   }
   return names[page] || 'Unknown'
 }

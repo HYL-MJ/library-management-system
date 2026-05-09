@@ -1,4 +1,5 @@
 const bookService = require("../services/bookService");
+const bookRankingService = require("../services/bookRankingService");
 const { sendSuccess } = require("../lib/response");
 
 async function listBooks(req, res, next) {
@@ -22,6 +23,15 @@ async function searchBooks(req, res, next) {
 async function getBookDetail(req, res, next) {
   try {
     const data = await bookService.getBookDetail(req.params.id);
+    sendSuccess(res, data);
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getBookByBarcode(req, res, next) {
+  try {
+    const data = await bookService.getBookByBarcode(req.params.barcode);
     sendSuccess(res, data);
   } catch (error) {
     next(error);
@@ -53,7 +63,7 @@ async function getNewBooks(req, res, next) {
 // Get loan ranking.
 async function getRanking(req, res, next) {
   try {
-    const data = await bookService.getRanking(req.query);
+    const data = await bookRankingService.getRanking(req.query);
     sendSuccess(res, data);
   } catch (error) {
     next(error);
@@ -77,6 +87,7 @@ module.exports = {
   listBooks,
   searchBooks,
   getBookDetail,
+  getBookByBarcode,
   getBooksWithFilters,  
   getNewBooks,          
   getRanking,

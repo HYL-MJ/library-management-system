@@ -43,41 +43,50 @@ enum HoldStatus {
   CANCELLED
 }
 
+enum AnnouncementType {
+  CLOSURE
+  ACTIVITY
+  RULE_CHANGE
+  TIME_CHANGE
+  OTHER
+}
+
 model User {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
-  email        String     @unique
+  email        String   @unique
   passwordHash String
   studentId    String?
-  role         Role       @default(STUDENT)
-  createdAt    DateTime   @default(now())
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now())
 
-  loans     Loan[]
-  ratings   Rating[]
-  holds     Hold[]
-  wishlists Wishlist[]
+  loans               Loan[]
+  ratings             Rating[]
+  holds               Hold[]
+  wishlists           Wishlist[]
   acquisitionRequests AcquisitionRequest[]
-  auditLogs AuditLog[]
+  auditLogs           AuditLog[]
 
   @@index([role])
   @@index([studentId])
 }
 
 model Book {
-  id            String     @id @default(cuid())
-  title         String
-  author        String
-  isbn          String     @unique
-  genre         Genre
-  cover         String?
-  description   String?
-  language      BookLanguage
-  shelfLocation String?
-  available     Boolean    @default(true)
-  availableCopies Int      @default(1)
-  createdAt     DateTime   @default(now())
+  id              String       @id @default(cuid())
+  title           String
+  author          String
+  isbn            String       @unique
+  genre           Genre
+  cover           String?
+  description     String?
+  language        BookLanguage
+  shelfLocation   String?
+  available       Boolean      @default(true)
+  availableCopies Int          @default(1)
+  createdAt       DateTime     @default(now())
 
   loans     Loan[]
+  copies    BookCopy[]
   ratings   Rating[]
   holds     Hold[]
   wishlists Wishlist[]
@@ -87,19 +96,34 @@ model Book {
   @@index([available])
 }
 
+model BookCopy {
+  id            String   @id @default(cuid())
+  bookId         String
+  barcode        String   @unique
+  shelfLocation  String?
+  available      Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId])
+  @@index([barcode])
+  @@index([available])
+}
+
 model Loan {
-  id           String   @id @default(cuid())
+  id           String     @id @default(cuid())
   bookId       String
   userId       String
   checkoutDate DateTime
   dueDate      DateTime
   returnDate   DateTime?
-  fineAmount   Decimal  @default(0)
-  finePaid     Boolean  @default(false)
-  fineForgiven Boolean  @default(false)
-  renewalCount Int      @default(0)
+  fineAmount   Decimal    @default(0)
+  finePaid     Boolean    @default(false)
+  fineForgiven Boolean    @default(false)
+  renewalCount Int        @default(0)
   status       LoanStatus @default(Borrowing)
-  createdAt    DateTime @default(now())
+  createdAt    DateTime   @default(now())
 
   book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -178,11 +202,15 @@ model AuditLog {
 }
 
 model Announcement {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   title       String
   content     String
+  type        AnnouncementType @default(OTHER)
   publishedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime         @default(now())
+
+  @@index([publishedAt])
+  @@index([createdAt])
 }
 
 model AcquisitionRequest {

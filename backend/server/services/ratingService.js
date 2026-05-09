@@ -7,7 +7,7 @@ class RatingService {
       where: {
         userId: userId,
         bookId: bookId,
-        status: { in: ['Returned', 'Overdue'] } // Returned or overdue records.
+        status: { in: ['Borrowing', 'Returned', 'Overdue'] } // Any borrow history, including current borrow.
       }
     });
     return !!loan;

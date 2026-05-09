@@ -34,7 +34,15 @@ function LoginPage({ onLoginSuccess }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userName: loginForm.userName, password: loginForm.password })
       })
-      const data = await res.json()
+      
+      let data
+      try {
+        data = await res.json()
+      } catch (parseError) {
+        // If JSON parsing fails, create a basic error response
+        data = { message: 'Invalid response from server' }
+      }
+      
       if (res.ok) {
         localStorage.setItem('token', data.data.token)
         onLoginSuccess({
@@ -87,7 +95,14 @@ function LoginPage({ onLoginSuccess }) {
           studentId: form.studentId || undefined
         })
       })
-      const data = await res.json()
+      
+      let data
+      try {
+        data = await res.json()
+      } catch (parseError) {
+        data = { message: 'Invalid response from server' }
+      }
+      
       if (res.ok) {
         // 注册成功后自动登录
         const loginRes = await fetch(`${API_BASE}/login`, {
@@ -95,7 +110,14 @@ function LoginPage({ onLoginSuccess }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userName: form.email, password: form.password })
         })
-        const loginData = await loginRes.json()
+        
+        let loginData
+        try {
+          loginData = await loginRes.json()
+        } catch (loginParseError) {
+          loginData = { message: 'Invalid response from server during login' }
+        }
+        
         if (loginRes.ok) {
           localStorage.setItem('token', loginData.data.token)
           onLoginSuccess({
@@ -198,15 +220,6 @@ function LoginPage({ onLoginSuccess }) {
             <p>Already have an account? <button className="toggle-btn" onClick={() => { setIsLogin(true); setError('') }}>Back to Login</button></p>
           )}
         </div>
-
-        {isLogin && (
-          <div className="test-accounts">
-            <strong>Test Accounts:</strong>
-            <div>👨‍💼 Admin: admin@library.com / admin123</div>
-            <div>📚 Librarian: librarian@library.com / lib123</div>
-            <div>🎓 Student: student1@library.com / student123</div>
-          </div>
-        )}
       </div>
     </div>
   )

@@ -66,9 +66,14 @@ const LibrarianDashboard = ({
     shelfLocation: '',
     availableCopies: 1,
     description: '',
-    cover: ''
+    cover: '',
+    localError: ''
   })
   const [lookupLoading, setLookupLoading] = useState(false)
+  const [scanInput, setScanInput] = useState('')
+  const [scanResult, setScanResult] = useState(null)
+  const [scanLoading, setScanLoading] = useState(false)
+  const [scanError, setScanError] = useState('')
   const [editForm, setEditForm] = useState({
     title: '',
     author: '',
@@ -277,9 +282,10 @@ const LibrarianDashboard = ({
 
   const handleLookupIsbn = async (isbn) => {
     if (!isbn || isbn.trim().length < 10) {
-      notify('error', 'Please enter a valid ISBN (at least 10 characters)')
+      setAddForm(prev => ({ ...prev, localError: 'Please enter a valid ISBN (at least 10 characters)' }))
       return
     }
+    setAddForm(prev => ({ ...prev, localError: '' }))
     setLookupLoading(true)
     try {
       const token = getToken()
@@ -294,7 +300,8 @@ const LibrarianDashboard = ({
           title: book.title || prev.title,
           author: book.authors?.[0] || prev.author,
           cover: book.cover || prev.cover,
-          description: book.description || prev.description
+          description: book.description || prev.description,
+          localError: ''
         }))
         notify('success', 'Book info found! Please verify and fill in remaining fields.')
       } else {
@@ -306,6 +313,33 @@ const LibrarianDashboard = ({
       setLookupLoading(false)
     }
   }
+
+  const handleScanBook = async (isbn) => {
+    if (!isbn || isbn.trim().length < 1) {
+      setScanError('Please enter ISBN or barcode');
+      return;
+    }
+    setScanError('');
+    setScanResult(null);
+    setScanLoading(true);
+    try {
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/books/scan?isbn=${encodeURIComponent(isbn.trim())}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (result.code === 200 && result.data) {
+        setScanResult(result.data);
+        notify('success', 'Book found!');
+      } else {
+        setScanError(result.message || 'Book not found');
+      }
+    } catch (err) {
+      setScanError('Failed to scan book');
+    } finally {
+      setScanLoading(false);
+    }
+  };
 
   const handleAddBook = async (e) => {
     e.preventDefault()
@@ -790,7 +824,7 @@ const LibrarianDashboard = ({
             <input
               type="text"
               className="search-input"
-              placeholder="Search by title, author, or ISBN..."
+              placeholder="Search by title or author"
               value={searchKeyword}
               onChange={(e) => setSearchKeyword(e.target.value)}
             />
@@ -1110,6 +1144,95 @@ const LibrarianDashboard = ({
     </div>
   )
 
+  const renderScanner = () => {
+    return (
+      <div className="content">
+        <div className="page-header">
+          <h2>📷 Book Scanner</h2>
+        </div>
+        {renderMessages()}
+        <div className="scanner-section">
+          <div className="scanner-card">
+            <div className="scanner-input-area">
+              <label>Enter ISBN or Barcode:</label>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <input
+                  type="text"
+                  value={scanInput}
+                  onChange={(e) => setScanInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleScanBook(scanInput);
+                    }
+                  }}
+                  placeholder="Enter ISBN or scan barcode"
+                  style={{ flex: 1, padding: '10px', fontSize: '16px' }}
+                />
+                <button
+                  onClick={() => handleScanBook(scanInput)}
+                  disabled={scanLoading || !scanInput.trim()}
+                  style={{
+                    padding: '10px 20px',
+                    backgroundColor: scanLoading ? '#ccc' : '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: scanLoading ? 'not-allowed' : 'pointer',
+                    fontSize: '16px'
+                  }}
+                >
+                  {scanLoading ? 'Scanning...' : 'Scan'}
+                </button>
+              </div>
+              {scanError && <div className="error-message" style={{ marginTop: '10px' }}>{scanError}</div>}
+            </div>
+
+            {scanResult && (
+              <div className="scanner-result" style={{ marginTop: '30px', padding: '20px', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
+                <h3 style={{ marginBottom: '15px' }}>📚 Book Found</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div><strong>Title:</strong></div>
+                  <div>{scanResult.title}</div>
+                  <div><strong>Author:</strong></div>
+                  <div>{scanResult.author}</div>
+                  <div><strong>ISBN:</strong></div>
+                  <div>{scanResult.isbn}</div>
+                  <div><strong>Genre:</strong></div>
+                  <div>{scanResult.genre}</div>
+                  <div><strong>Language:</strong></div>
+                  <div>{scanResult.language}</div>
+                  <div><strong>Shelf Location:</strong></div>
+                  <div>{scanResult.shelfLocation || 'N/A'}</div>
+                  <div><strong>Available:</strong></div>
+                  <div>{scanResult.availableCopies} / {scanResult.totalCopies || scanResult.availableCopies}</div>
+                </div>
+                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => {
+                      setScanInput('');
+                      setScanResult(null);
+                      setScanError('');
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderHoldManagement = () => {
     const holdStats = getHoldStats()
     const visibleHoldRecords = getVisibleHoldRecords()
@@ -1316,6 +1439,7 @@ const LibrarianDashboard = ({
           <button className="modal-close" onClick={() => setShowAddModal(false)}>×</button>
         </div>
         <form onSubmit={handleAddBook}>
+          {addForm.localError && <div className="error-message" style={{ marginBottom: '15px' }}>{addForm.localError}</div>}
           <div className="form-group">
             <label>ISBN *</label>
             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1632,6 +1756,8 @@ const LibrarianDashboard = ({
       return renderLoanManagement()
     case 'holds-manage':
       return renderHoldManagement()
+    case 'scanner':
+      return renderScanner()
     default:
       return <div className="content"><div className="page-header"><h2>Under development...</h2></div></div>
   }

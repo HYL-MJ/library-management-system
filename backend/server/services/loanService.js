@@ -349,72 +349,11 @@ async function getLibrarianLoans(query = {}) {
     throw new AppError(400, "Invalid pagination parameters");
   }
 
-  const where = {};
-
-  if (!status || status === "ACTIVE") {
-    where.status = {
-      in: ACTIVE_LOAN_STATUSES,
-    };
-  } else if (status !== "ALL") {
-    where.status = status;
+  if (!book.available || book.availableCopies <= 0) {
+    throw new AppError(400, "This book is currently unavailable, or you have unpaid fines");
   }
 
-  if (keyword) {
-    where.OR = [
-      {
-        id: {
-          contains: keyword,
-        },
-      },
-      {
-        user: {
-          name: {
-            contains: keyword,
-          },
-        },
-      },
-      {
-        user: {
-          email: {
-            contains: keyword,
-          },
-        },
-      },
-      {
-        book: {
-          title: {
-            contains: keyword,
-          },
-        },
-      },
-      {
-        book: {
-          isbn: {
-            contains: keyword,
-          },
-        },
-      },
-    ];
-  }
-
-  const skip = (page - 1) * size;
-
-  const [loans, total] = await Promise.all([
-    prisma.loan.findMany({
-      where,
-      include: {
-        book: true,
-        user: true,
-      },
-      orderBy: [
-        { dueDate: "asc" },
-        { checkoutDate: "desc" },
-      ],
-      skip,
-      take: size,
-    }),
-    prisma.loan.count({ where }),
-  ]);
+  await ensureNoUnpaidFines(userId);
 
   return {
     total,

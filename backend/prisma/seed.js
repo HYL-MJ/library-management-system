@@ -343,6 +343,33 @@ async function main() {
 
   console.log(`Seeded books: ${books.count}`);
 
+  const createdBooks = await prisma.book.findMany({
+    select: {
+      id: true,
+      isbn: true,
+      shelfLocation: true,
+      availableCopies: true,
+    },
+  });
+
+  const bookCopiesData = createdBooks.flatMap((book) =>
+    Array.from({ length: book.availableCopies }, (_, index) => ({
+      bookId: book.id,
+      barcode: `${book.isbn}-${String(index + 1).padStart(3, "0")}`,
+      shelfLocation: book.shelfLocation,
+      available: true,
+    })),
+  );
+
+  if (bookCopiesData.length > 0) {
+    const copies = await prisma.bookCopy.createMany({
+      data: bookCopiesData,
+      skipDuplicates: true,
+    });
+
+    console.log(`Seeded book copies: ${copies.count}`);
+  }
+
   const config = await prisma.config.upsert({
     where: { key: "FINE_RATE_PER_DAY" },
     update: {
@@ -355,6 +382,45 @@ async function main() {
   });
 
   console.log("Seeded config:", config);
+
+  const announcementsData = [
+    {
+      title: "图书馆春节闭馆通知",
+      content: "尊敬的读者：\n\n春节期间（2月10日-2月17日）图书馆将闭馆，暂停所有借阅服务。2月18日恢复正常开放。\n\n给您带来的不便，敬请谅解。\n\n图书馆管理处",
+      type: "CLOSURE",
+      publishedAt: new Date("2026-02-05T10:00:00Z"),
+    },
+    {
+      title: "新书推荐活动",
+      content: "本月新增科技类图书50余册，包括《人工智能导论》、《深度学习实战》等热门书籍。欢迎广大读者前来借阅！\n\n活动地点：一楼大厅\n活动时间：3月1日-3月31日",
+      type: "ACTIVITY",
+      publishedAt: new Date("2026-03-01T09:00:00Z"),
+    },
+    {
+      title: "借阅规则调整通知",
+      content: "自2026年4月1日起，图书借阅期限由原来的30天调整为45天，续借次数仍为1次。\n\n逾期罚款标准保持不变：每天0.5元。\n\n请各位读者合理安排借阅时间。",
+      type: "RULE_CHANGE",
+      publishedAt: new Date("2026-03-25T14:30:00Z"),
+    },
+    {
+      title: "周末开放时间调整",
+      content: "为方便读者利用周末时间阅读，自4月起，图书馆周末开放时间调整为：\n\n周六：9:00-21:00\n周日：9:00-18:00\n\n工作日开放时间不变：8:00-22:00",
+      type: "TIME_CHANGE",
+      publishedAt: new Date("2026-03-28T16:00:00Z"),
+    },
+    {
+      title: "读书分享会邀请",
+      content: "图书馆将于4月15日举办读书分享会，主题：'科技与人文的融合'。\n\n特邀嘉宾：张教授（计算机科学系）\n地点：三楼报告厅\n时间：14:00-16:00\n\n欢迎感兴趣的读者报名参加！",
+      type: "ACTIVITY",
+      publishedAt: new Date("2026-04-01T10:00:00Z"),
+    },
+  ];
+
+  const announcements = await prisma.announcement.createMany({
+    data: announcementsData,
+  });
+
+  console.log(`Seeded announcements: ${announcements.count}`);
 }
 
 main()
