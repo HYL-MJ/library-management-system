@@ -344,13 +344,13 @@ async function main() {
   console.log(`Seeded books: ${books.count}`);
 
   const config = await prisma.config.upsert({
-    where: { key: "FINE_RATE_PER_DAY" },
+    where: { key: "FINE_DAILY_RATE" },
     update: {
-      value: "0.50",
+      value: "1.00",
     },
     create: {
-      key: "FINE_RATE_PER_DAY",
-      value: "0.50",
+      key: "FINE_DAILY_RATE",
+      value: "1.00",
     },
   });
 
