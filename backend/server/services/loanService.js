@@ -1,9 +1,14 @@
 const prisma = require("../db/prisma");
 const { AppError } = require("../lib/errors");
-const { formatDateTime, addDays } = require("../utils/date");
+const { getLoanPolicy } = require("../config/loanPolicy");
+const { formatDateTime, addDays, overdueWholeDays } = require("../utils/date");
 
-const DEFAULT_LOAN_DAYS = 30;
-const OVERDUE_FINE_AMOUNT = 5;
+async function computeOverdueFineAmount(loan, returnDate) {
+  const { fineRate } = await getLoanPolicy();
+  const days = overdueWholeDays(loan.dueDate, returnDate);
+  if (days <= 0) return 0;
+  return Math.round(days * fineRate * 100) / 100;
+}
 
 async function syncOverdueLoansForUser(userId) {
   const now = new Date();
@@ -149,7 +154,34 @@ async function ensureBorrowAllowed(userId, bookId) {
     throw new AppError(400, "This book is currently unavailable, or you have unpaid fines");
   }
 
+  const existingActiveLoan = await prisma.loan.findFirst({
+    where: {
+      userId,
+      bookId,
+      status: { in: ['Borrowing', 'Overdue'] }
+    }
+  });
+
+  if (existingActiveLoan) {
+    throw new AppError(400, "You already have an active loan for this book");
+  }
+
   await ensureNoUnpaidFines(userId);
+
+  const { maxBooks } = await getLoanPolicy();
+  const activeCount = await prisma.loan.count({
+    where: {
+      userId,
+      status: { in: ["Borrowing", "Overdue"] },
+    },
+  });
+
+  if (activeCount >= maxBooks) {
+    throw new AppError(
+      400,
+      `You have reached the borrowing limit (${maxBooks} books). Please return some books before borrowing more.`,
+    );
+  }
 
   return book;
 }
@@ -163,7 +195,8 @@ async function createLoan(userId, payload) {
 
   const book = await ensureBorrowAllowed(userId, bookId);
   const checkoutDate = new Date();
-  const dueDate = addDays(checkoutDate, DEFAULT_LOAN_DAYS);
+  const { maxDays } = await getLoanPolicy();
+  const dueDate = addDays(checkoutDate, maxDays);
 
   const loan = await prisma.$transaction(async (tx) => {
     const createdLoan = await tx.loan.create({
@@ -251,7 +284,8 @@ async function renewLoan(userId, loanId) {
     throw new AppError(400, "This book has been reserved by another reader and cannot be renewed");
   }
 
-  const newDueDate = addDays(loan.dueDate, 30);
+  const { maxDays } = await getLoanPolicy();
+  const newDueDate = addDays(loan.dueDate, maxDays);
   const updatedLoan = await prisma.loan.update({
     where: { id: loanId },
     data: {
@@ -288,7 +322,7 @@ async function returnLoan(userId, loanId) {
   }
 
   const now = new Date();
-  const fineAmount = loan.dueDate < now ? OVERDUE_FINE_AMOUNT : 0;
+  const fineAmount = await computeOverdueFineAmount(loan, now);
 
   const updatedLoan = await prisma.$transaction(async (tx) => {
     const returnedLoan = await tx.loan.update({
@@ -385,6 +419,5 @@ module.exports = {
   getHistoryLoans,
   renewLoan,
   returnLoan,
-  payFine,
   payFine,
 };

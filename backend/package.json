@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run test:smoke && npm run test:fine",
-    "test:smoke": "node tests/reader-release1.smoke.js",
+    "test:smoke": "node tests/reader-release1.smoke.js && node tests/loan-max-books.smoke.js",
     "test:fine": "node tests/reader-fine-edge.js",
     "test:admin": "node tests/admin-release1.smoke.js",
     "dev": "nodemon index.js",

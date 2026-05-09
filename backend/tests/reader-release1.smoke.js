@@ -1,5 +1,9 @@
 const assert = require("node:assert/strict");
 
+process.env.LOAN_FINE_RATE = "5";
+process.env.LOAN_MAX_BOOKS = "20";
+process.env.LOAN_MAX_DAYS = "30";
+
 const app = require("../server/app");
 const prisma = require("../server/db/prisma");
 
@@ -256,6 +260,14 @@ async function main() {
     ),
   );
 
+  await prisma.loan.update({
+    where: { id: loanId },
+    data: {
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: "Borrowing",
+    },
+  });
+
   const returnResult = await request(`/api/loans/${loanId}/return`, {
     method: "POST",
     headers: {
@@ -302,7 +314,7 @@ async function main() {
     },
   });
   assert.equal(overdueReturnResult.response.status, 200);
-  assert.equal(overdueReturnResult.body.data.fineAmount, 5);
+  assert.equal(overdueReturnResult.body.data.fineAmount, 10);
 
   const historyAfterOverdueReturnResult = await request("/api/loans/history", {
     headers: {
@@ -314,7 +326,7 @@ async function main() {
     (loan) => loan.id === fineLoanId,
   );
   assert.ok(overdueHistoryLoan);
-  assert.equal(overdueHistoryLoan.fineAmount, 5);
+  assert.equal(overdueHistoryLoan.fineAmount, 10);
   assert.equal(overdueHistoryLoan.finePaid, false);
   assert.equal(overdueHistoryLoan.fineForgiven, false);
 
@@ -347,7 +359,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      amount: 4,
+      amount: 9,
     }),
   });
   assert.equal(wrongAmountPayResult.response.status, 400);
@@ -372,7 +384,7 @@ async function main() {
   assert.equal(payFineResult.response.status, 200);
   assert.equal(payFineResult.body.message, "Fine paid successfully");
   assert.equal(payFineResult.body.data.loanId, fineLoanId);
-  assert.equal(payFineResult.body.data.fineAmount, 5);
+  assert.equal(payFineResult.body.data.fineAmount, 10);
   assert.equal(payFineResult.body.data.finePaid, true);
 
   const historyAfterPayFineResult = await request("/api/loans/history", {
@@ -385,14 +397,14 @@ async function main() {
     (loan) => loan.id === fineLoanId,
   );
   assert.ok(paidHistoryLoan);
-  assert.equal(paidHistoryLoan.fineAmount, 5);
+  assert.equal(paidHistoryLoan.fineAmount, 10);
   assert.equal(paidHistoryLoan.finePaid, true);
   assert.equal(paidHistoryLoan.fineForgiven, false);
 
   const paidLoan = await prisma.loan.findUnique({
     where: { id: fineLoanId },
   });
-  assert.equal(Number(paidLoan.fineAmount), 5);
+  assert.equal(Number(paidLoan.fineAmount), 10);
   assert.equal(paidLoan.finePaid, true);
 
   const auditLog = await prisma.auditLog.findFirst({
@@ -409,7 +421,7 @@ async function main() {
   assert.ok(auditLog);
   assert.equal(
     auditLog.detail,
-    JSON.stringify({ amount: 5, method: "SIMULATED" }),
+    JSON.stringify({ amount: 10, method: "SIMULATED" }),
   );
 
   const duplicatePayResult = await request(`/api/loans/${fineLoanId}/pay-fine`, {
@@ -419,7 +431,7 @@ async function main() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      amount: 5,
+      amount: 10,
     }),
   });
   assert.equal(duplicatePayResult.response.status, 400);
